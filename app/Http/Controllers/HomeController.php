@@ -12,9 +12,9 @@ class HomeController extends Controller
     {
         $products = Product::query()
             ->where('active', true)
-            ->where('featured', true)
             ->orderBy('id')
-            ->get(['id', 'name', 'image', 'unit', 'origin', 'price', 'salePrice', 'stock'])
+            ->with('category:id,name')
+            ->get(['id', 'category_id', 'name', 'image', 'unit', 'origin', 'price', 'salePrice', 'stock'])
             ->map(fn(Product $product): array => [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -26,6 +26,10 @@ class HomeController extends Controller
                 'price' => $product->price,
                 'salePrice' => $product->salePrice,
                 'stock' => $product->stock,
+                'category' => [
+                    'id' => $product->category->id,
+                    'name' => $product->category->name,
+                ],
             ]);
 
         return Inertia::render('Welcome', [

@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import products from '@/routes/products';
 
 const props = defineProps({
   product: {
@@ -38,9 +39,7 @@ const calculePourcentage = (product)=> {
   <div>
   <article class="product-card">
        <div class="product-media">
-        <Link :href="`/product/${product.id}`" aria-label="Voir Riz brisé parfumé">
          <img :alt="product.name" height="240" loading="lazy" :src="product.image" width="360"/>
-        </Link>
         <span class="promo-tag" v-show="product.salePrice">
          Promo {{ calculePourcentage(product) }} %
         </span>
@@ -50,9 +49,7 @@ const calculePourcentage = (product)=> {
          {{ product.origin }}
         </p>
         <h3>
-         <Link :href="`/product/${product.id}`">
-          {{ product.name }}
-         </Link>
+         {{ product.name }}
         </h3>
         <p class="muted small">
          {{ product.name }} {{ product.unit }} · {{ product.stock }} disponible(s)
@@ -78,6 +75,11 @@ const calculePourcentage = (product)=> {
          </button>
         </div>
        </div>
+        <Link
+         :href="products.page.url(product.id)"
+         class="product-card-link"
+         :aria-label="`Voir la fiche de ${product.name}`"
+        />
       </article>
 </div>
 </template>
@@ -86,10 +88,27 @@ const calculePourcentage = (product)=> {
 
 <style scoped>
 .product-card {
+  position: relative;
   border: 1px solid #ddd;
   border-radius: 8px;
   padding: 1rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-card-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.product-card-link:focus-visible {
+  outline: 3px solid #34634a;
+  outline-offset: 3px;
+}
+
+.add-button {
+  position: relative;
+  z-index: 2;
 }
 
 .product-card:hover {

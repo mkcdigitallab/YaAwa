@@ -1,5 +1,6 @@
 
 <script setup>
+import { computed, reactive } from 'vue'
 import ProductCard from '@/components/base/ProductCard.vue'
 
 const props = defineProps({
@@ -8,6 +9,70 @@ const props = defineProps({
   required: true,
  },
 })
+
+const filters = reactive({
+ search: '',
+ category: 'all',
+ availability: 'all',
+ sort: 'default',
+})
+
+const categories = computed(() => {
+    const categoriesUniques = []
+
+    props.products.forEach((product) => {
+        const category = product.category
+
+        if (category) {
+            const existeDeja = categoriesUniques.some(
+                (categorie) => categorie.id === category.id
+            )
+
+            if (!existeDeja) {
+                categoriesUniques.push(category)
+            }
+        }
+    })
+
+    categoriesUniques.sort((categorieA, categorieB) => {
+        return categorieA.name.localeCompare(categorieB.name, 'fr')
+    })
+
+    return categoriesUniques
+})
+
+const filteredProducts = computed(() => {
+ const search = filters.search.trim().toLocaleLowerCase('fr')
+ const products = props.products.filter((product) => {
+  const matchesName = product.name.toLocaleLowerCase('fr').includes(search)
+  const matchesCategory = filters.category === 'all'
+   || String(product.category?.id) === filters.category
+  const matchesAvailability = filters.availability === 'all'
+   || (filters.availability === 'available' && product.stock > 0)
+   || (filters.availability === 'promo' && product.salePrice !== null)
+
+  return matchesName && matchesCategory && matchesAvailability
+ })
+
+ if (filters.sort === 'price-ascending') {
+  products.sort((first, second) => (first.salePrice ?? first.price) - (second.salePrice ?? second.price))
+ } else if (filters.sort === 'price-descending') {
+  products.sort((first, second) => (second.salePrice ?? second.price) - (first.salePrice ?? first.price))
+ } else if (filters.sort === 'alphabetical') {
+  products.sort((first, second) => first.name.localeCompare(second.name, 'fr'))
+ }
+
+ return products
+})
+
+function resetFilters() {
+ Object.assign(filters, {
+  search: '',
+  category: 'all',
+  availability: 'all',
+  sort: 'default',
+ })
+}
 </script>
 
 <template>
@@ -153,51 +218,49 @@ const props = defineProps({
       </div>
      </div>
     </section>
-    <section class="categories-section">
-     <div class="section-heading">
-      <div>
-       <p class="overline">
-        À CHAQUE ENVIE, SON RAYON
-       </p>
-       <h2>
-        De quoi se régaler
-       </h2>
-      </div>
-     </div>
-     <!-- DEMANDE 01 / 03 — À PROGRAMMER : Utiliser les catégories de l’API pour les images, la couleur CSS et le filtre. -->
-     <div class="categories">
-      <a class="category" href="categories/cereales.html" style="--category-color: #b98a38">
-       <img alt="" height="48" src="assets/images/cereales.svg" width="56"/>
-       <span>
-        Céréales
-       </span>
-      </a>
-      <a class="category" href="categories/legumes.html" style="--category-color: #468060">
-       <img alt="" height="48" src="assets/images/legumes.svg" width="56"/>
-       <span>
-        Légumes
-       </span>
-      </a>
-      <a class="category" href="categories/epicerie.html" style="--category-color: #b65c3a">
-       <img alt="" height="48" src="assets/images/epicerie.svg" width="56"/>
-       <span>
-        Épicerie
-       </span>
-      </a>
-      <a class="category" href="categories/poisson.html" style="--category-color: #477d87">
-       <img alt="" height="48" src="assets/images/poisson.svg" width="56"/>
-       <span>
-        Poisson
-       </span>
-      </a>
-      <a class="category" href="categories/saveurs-locales.html" style="--category-color: #956687">
-       <img alt="" height="48" src="assets/images/local.svg" width="56"/>
-       <span>
-        Saveurs locales
-       </span>
-      </a>
-     </div>
-    </section>
+         <!-- DEMANDE 01 / 03 — À PROGRAMMER : Utiliser les catégories de l’API pour les images, la couleur CSS et le filtre. -->
+
+   <section class="categories-section">
+    <div class="section-heading">
+        <div>
+            <p class="overline">
+                À CHAQUE ENVIE, SON RAYON
+            </p>
+
+            <h2>
+                De quoi se régaler
+            </h2>
+        </div>
+    </div>
+
+    <div class="categories">
+        <button
+            v-for="category in categories"
+            :key="category.id"
+            type="button"
+            class="category"
+            :style="{ '--category-color': category.color }"
+            :aria-pressed="filters.category === String(category.id)"
+            @click="filters.category = String(category.id)">
+            <img
+                :src="category.image"
+                :alt="''"
+                width="56"
+                height="48"
+            />
+
+            <span>{{ category.name }}</span>
+        </button>
+    </div>
+    <button
+    type="button"
+    class="category"
+    :aria-pressed="filters.category === 'all'"
+    @click="filters.category = 'all'"
+>
+    Toutes les catégories
+</button>
+</section>
     <section id="catalogue">
      <div class="section-heading">
       <div>
@@ -208,7 +271,7 @@ const props = defineProps({
         Nos produits du moment
        </h2>
       </div>
-      <a class="text-button" href="boutique.html">
+      <a class="text-button" href="http://localhost:8000/">
        Tout le marché
        <svg aria-hidden="true" class="icon" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" viewbox="0 0 24 24" width="16">
         <path d="M5 12h14m-5-5 5 5-5 5">
@@ -216,13 +279,54 @@ const props = defineProps({
        </svg>
       </a>
      </div>
-   <div class="product-grid">
+   <div class="catalogue-filters" aria-label="Filtres des produits">
+    <label>
+     <span>Rechercher un produit</span>
+     <input v-model="filters.search" type="search" placeholder="Riz, sucre, huile…"/>
+    </label>
+    <label>
+     <span>Catégorie</span>
+     <select v-model="filters.category">
+      <option value="all">Toutes les catégories</option>
+      <option v-for="category in categories" :key="category.id" :value="String(category.id)">
+       {{ category.name }}
+      </option>
+     </select>
+    </label>
+    <label>
+     <span>Produits</span>
+     <select v-model="filters.availability">
+      <option value="all">Tous</option>
+      <option value="available">Disponibles</option>
+      <option value="promo">En promotion</option>
+     </select>
+    </label>
+    <label>
+     <span>Trier par</span>
+     <select v-model="filters.sort">
+      <option value="default">Ordre par défaut</option>
+      <option value="price-ascending">Prix croissant</option>
+      <option value="price-descending">Prix décroissant</option>
+      <option value="alphabetical">Ordre alphabétique</option>
+     </select>
+    </label>
+    <button class="text-button reset-filters" type="button" @click="resetFilters">
+     Réinitialiser les filtres
+    </button>
+    <p class="muted small result-count" aria-live="polite">
+     {{ filteredProducts.length }} produit{{ filteredProducts.length > 1 ? 's' : '' }} trouvé{{ filteredProducts.length > 1 ? 's' : '' }}
+    </p>
+   </div>
+   <div v-if="filteredProducts.length" class="product-grid">
     <ProductCard
-     v-for="product in props.products"
+   v-for="product in filteredProducts"
      :key="product.id"
      :product="product"
     />
      </div>
+   <output v-else class="catalogue-empty">
+    Aucun produit ne correspond à vos critères.
+   </output>
     </section>
     <section class="loyalty-banner mt">
      <div>
@@ -510,50 +614,76 @@ const props = defineProps({
   <section aria-labelledby="search-dialog-title" class="static-overlay modal-overlay" id="recherche-apercu" role="dialog" tabindex="-1">
    <a aria-label="Fermer la recherche" class="overlay-dismiss" href="#page-top">
    </a>
-   <div class="modal-window search-dialog" data-component="SearchDialog">
-    <header class="dialog-header">
-     <h2 id="search-dialog-title">
-      Une envie particulière ?
-     </h2>
-     <a aria-label="Fermer" class="icon-button" href="#page-top">
-      <svg aria-hidden="true" class="icon" fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" viewbox="0 0 24 24" width="20">
-       <path d="m6 6 12 12M6 18 18 6">
-       </path>
-      </svg>
-     </a>
-    </header>
-    <div class="modal-body">
-     <label class="field" for="quick-search">
-      Rechercher un produit
-     </label>
-     <div class="input-action mt">
-      <input data-focus-target="search" id="quick-search" placeholder="Riz, bissap, légumes…" type="search"/>
-      <button class="btn" data-action="rechercher-produit" type="button">
-       <svg aria-hidden="true" class="icon" fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" viewbox="0 0 24 24" width="20">
-        <path d="m21 21-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0">
-        </path>
-       </svg>
-       Rechercher
-      </button>
-     </div>
-     <p class="muted small mt">
-      Le focus automatique et la recherche sont à programmer.
-     </p>
-     <div class="suggestions">
-      <a class="chip" href="categories/cereales.html">
-       Céréales
-      </a>
-      <a class="chip" href="categories/legumes.html">
-       Légumes
-      </a>
-      <a class="chip" href="categories/saveurs-locales.html">
-       Saveurs locales
-      </a>
-     </div>
-    </div>
-   </div>
+ 
   </section>
  </body>
 </html>
    </div>
 </template>
+
+<style scoped>
+.catalogue-filters {
+   display: grid;
+   grid-template-columns: repeat(4, minmax(0, 1fr));
+   align-items: end;
+   gap: 1rem;
+   margin: 1.5rem 0 1rem;
+   padding: 1rem;
+   border: 1px solid #e4e1d7;
+   border-radius: 8px;
+   background: #faf9f5;
+}
+
+.catalogue-filters label {
+   display: grid;
+   gap: 0.4rem;
+   color: #46534b;
+   font-size: 0.875rem;
+   font-weight: 600;
+}
+
+.catalogue-filters input,
+.catalogue-filters select {
+   width: 100%;
+   min-height: 2.75rem;
+   padding: 0.55rem 0.7rem;
+   border: 1px solid #c9cec8;
+   border-radius: 5px;
+   background: #fff;
+   color: #252a26;
+   font: inherit;
+}
+
+.reset-filters {
+   justify-self: start;
+}
+
+.result-count {
+   grid-column: 1 / -1;
+   margin: 0;
+}
+
+.catalogue-empty {
+   padding: 2rem 1rem;
+   border: 1px dashed #b8c0b9;
+   border-radius: 8px;
+   color: #46534b;
+   text-align: center;
+}
+
+@media (max-width: 760px) {
+   .catalogue-filters {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+   }
+}
+
+@media (max-width: 480px) {
+   .catalogue-filters {
+      grid-template-columns: 1fr;
+   }
+
+   .result-count {
+      grid-column: auto;
+   }
+}
+</style>

@@ -105,7 +105,7 @@ La Demande 02 est maintenant raccordée au catalogue. Lis les étapes ci-dessous
 ### Responsabilités des fichiers
 
 - `routes/web.php` dirige la page d’accueil vers `HomeController`.
-- `app/Http/Controllers/HomeController.php` lit les produits actifs et mis en avant, puis les envoie à `Welcome.vue` avec Inertia. Il adapte aussi le chemin des images du JSON au dossier réel `public/assets/images`.
+- `app/Http/Controllers/HomeController.php` lit les produits actifs et leur catégorie dans la base, puis les envoie à `Welcome.vue` avec Inertia. Il adapte aussi le chemin des images enregistrées en base au dossier réel `public/assets/images`.
 - `resources/js/pages/Welcome.vue` reçoit la liste et crée une carte par produit.
 - `resources/js/components/base/ProductCard.vue` reçoit un produit, valide ses props, calcule son affichage et émet un événement `add`.
 - `app/Http/Requests` sert à valider les données reçues par des actions HTTP Laravel. Il n’y a pas encore de formulaire ou de requête de création de produit : la validation demandée ici reste donc dans les props Vue.
@@ -219,7 +219,7 @@ Dans `Welcome.vue`, `defineProps` déclare cette liste. Le `v-for` parcourt les 
 
 Dans `resources/js/components/base/ProductCard.vue`, `product` est la prop reçue. La liaison `:src="product.image"` demande au navigateur d'afficher l'URL préparée par le contrôleur; `:alt="product.name"` fournit la description textuelle de l'image.
 
-La route `GET /api/products`, aussi déclarée dans `routes/web.php`, est une autre manière de renvoyer des produits en JSON. La page d'accueil actuelle ne l'utilise pas : elle passe par Inertia et `HomeController`.
+La route `GET /api/products`, aussi déclarée dans `routes/web.php`, lit elle aussi les produits dans la base et les renvoie au format JSON. La page d'accueil passe par Inertia et `HomeController`; la fiche produit utilise `GET /api/products/{id}`.
 
 ### Où chercher si l'image manque
 
@@ -228,3 +228,17 @@ La route `GET /api/products`, aussi déclarée dans `routes/web.php`, est une au
 3. Vérifier que `HomeController` transmet bien une URL `/assets/images/...`.
 4. Dans le navigateur, ouvrir directement cette URL. Pour le riz en local : `http://localhost:8000/assets/images/riz.svg`.
 5. Dans les outils de développement du navigateur, inspecter `src` sur l'élément `<img>` et vérifier qu'il ne renvoie pas une erreur 404.
+
+## Demandes 03 et 04 — Recherche et fiche produit
+
+La base de données est la source des produits affichés par la boutique. `HomeController` sélectionne tous les produits actifs et charge leur catégorie; la page ne lit pas `database/data/Demon.json` pour construire le catalogue. Ce fichier reste utilisé par le seeder pour préparer les données de démonstration.
+
+Dans `Welcome.vue`, un objet `reactive` rassemble la recherche, la catégorie, la disponibilité et le tri. Une propriété `computed` combine ces critères en temps réel, sans bouton de recherche. Le compteur, l’état sans résultat et la réinitialisation des filtres sont affichés depuis cette liste calculée.
+
+Chaque carte mène à `/product/{id}`. La page `ProductDetail.vue` demande le produit à `GET /api/products/{id}`; `ProductController` lit le modèle `Product` et sa catégorie en base, puis renvoie la réponse de l’API au format JSON. Ici, JSON désigne uniquement le format d’échange HTTP : les données ne proviennent pas d’un fichier JSON. La page gère le chargement, le produit absent, le retour à la boutique et le changement d’identifiant.
+
+Pour vérifier le comportement serveur :
+
+```bash
+php artisan test --compact tests/Feature/ProductCatalogTest.php
+```
